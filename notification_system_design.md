@@ -874,3 +874,156 @@ worker_process(job)
 
 ---
 
+# Stage-6
+
+# Priority Notification System
+
+The notification system should display the most important notifications first so that users can quickly view urgent updates like placement drives or result announcements.
+
+Priority order used:
+
+```text
+Placement > Result > Event
+```
+
+Placement notifications are given highest priority because they are usually time-sensitive.
+
+---
+
+# Approach Used
+
+Notifications are fetched from the API and sorted using:
+
+1. Notification priority
+2. Latest timestamp
+
+Priority weights:
+
+| Type | Priority |
+|------|-----------|
+| Placement | 3 |
+| Result | 2 |
+| Event | 1 |
+
+If two notifications have the same priority, the latest notification is shown first.
+
+---
+
+# JavaScript Implementation
+
+```js
+const axios = require("axios");
+
+const API_URL =
+  "http://4.224.186.213/evaluation-service/notifications";
+
+const ACCESS_TOKEN =
+  "YOUR_ACCESS_TOKEN";
+
+const priorityMap = {
+  Placement: 3,
+  Result: 2,
+  Event: 1,
+};
+
+async function fetchNotifications() {
+  try {
+    const response = await axios.get(API_URL, {
+      headers: {
+        Authorization: `Bearer ${ACCESS_TOKEN}`,
+      },
+    });
+
+    const notifications =
+      response.data.notifications || [];
+
+    const sortedNotifications =
+      notifications.sort((a, b) => {
+        const priorityDifference =
+          priorityMap[b.Type] -
+          priorityMap[a.Type];
+
+        if (priorityDifference !== 0) {
+          return priorityDifference;
+        }
+
+        return (
+          new Date(b.Timestamp) -
+          new Date(a.Timestamp)
+        );
+      });
+
+    const topNotifications =
+      sortedNotifications.slice(0, 10);
+
+    console.log(
+      "\n===== TOP PRIORITY NOTIFICATIONS =====\n"
+    );
+
+    topNotifications.forEach(
+      (notification, index) => {
+        console.log(
+          `${index + 1}. [${notification.Type}]`
+        );
+
+        console.log(
+          `Message : ${notification.Message}`
+        );
+
+        console.log(
+          `Time    : ${notification.Timestamp}`
+        );
+
+        console.log(
+          "-----------------------------------"
+        );
+      }
+    );
+  } catch (error) {
+    console.log(
+      "\nError while fetching notifications\n"
+    );
+
+    if (error.response) {
+      console.log(error.response.data);
+    } else {
+      console.log(error.message);
+    }
+  }
+}
+
+fetchNotifications();
+```
+
+---
+
+# Time Complexity
+
+The sorting operation takes:
+
+```text
+O(n log n)
+```
+
+where `n` is the number of notifications returned from the API.
+
+---
+
+# Possible Optimization
+
+For larger datasets, a priority queue or heap can be used to avoid sorting the complete list every time.
+
+This can improve efficiency when handling a very large number of notifications.
+
+---
+
+# Output
+
+The final output displays:
+
+- highest priority notifications first
+- latest notifications first within same priority
+- top 10 notifications
+
+This improves visibility of important updates for users.
+
