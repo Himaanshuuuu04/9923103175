@@ -715,3 +715,88 @@ Some additional optimizations that can improve performance are:
 - queue-based processing for bulk notifications
 
 These techniques help maintain stable performance as the system grows.
+
+---
+
+# Stage-4
+
+# Reducing Database Load
+
+Currently, notifications are fetched whenever a student opens or refreshes the page. With thousands of users, this can create too many database requests and slow down the system.
+
+To improve performance, the following changes can be used.
+
+---
+
+# 1. Pagination
+
+Instead of loading all notifications together, only a limited number of notifications should be fetched.
+
+Example:
+
+```http
+GET /notifications?page=1&limit=10
+```
+
+This reduces API response size and lowers database load.
+
+### Trade-off
+
+Users need additional requests to load older notifications.
+
+---
+
+# 2. Redis Caching
+
+Frequently used data like unread counts or recent notifications can be stored in Redis.
+
+This avoids repeated database queries for the same data.
+
+### Trade-off
+
+Cached data may not always be instantly updated.
+
+---
+
+# 3. WebSockets
+
+WebSockets can be used for real-time updates instead of repeatedly calling notification APIs.
+
+This reduces unnecessary polling requests.
+
+### Trade-off
+
+Maintaining WebSocket connections increases server memory usage.
+
+---
+
+# 4. Database Indexing
+
+Indexes help PostgreSQL fetch notifications faster.
+
+```sql
+CREATE INDEX idx_notifications_student_read_created
+ON notifications(student_id, is_read, created_at DESC);
+```
+
+### Trade-off
+
+Indexes require additional storage and slightly slow down inserts.
+
+---
+
+# 5. Queue-Based Processing
+
+Bulk notifications should be processed using queues instead of directly inside API requests.
+
+This prevents the server from getting overloaded during heavy traffic.
+
+### Trade-off
+
+Queues add some extra backend complexity.
+
+---
+
+# Final Approach
+
+A combination of pagination, caching, indexing, WebSockets, and queues can improve performance and reduce database load when the number of users grows.
