@@ -522,4 +522,196 @@ To handle larger amounts of traffic and notification data, the following optimiz
 - Optimized SQL queries
 
 These improvements help maintain good performance even when the number of users increases.
-````
+
+
+# Stage-3
+
+# Query Optimization
+
+The following query is being used to fetch unread notifications for a student:
+
+```sql
+SELECT *
+FROM notifications
+WHERE student_id = 1042
+AND is_read = false
+ORDER BY created_at ASC;
+```
+
+The query is correct because it returns unread notifications for a specific student. However, the performance can become slow when the database grows large.
+
+At the current scale of around 50,000 students and millions of notifications, this query may take longer because the database has to scan many rows before returning the result.
+
+---
+
+# Why The Query Is Slow
+
+## 1. Full Table Scan
+
+If proper indexes are not present, PostgreSQL may scan the entire notifications table to find matching rows.
+
+As the number of notifications increases, query execution time also increases.
+
+---
+
+## 2. Sorting Overhead
+
+The query sorts notifications using:
+
+```sql
+ORDER BY created_at ASC
+```
+
+Sorting large datasets increases processing time.
+
+---
+
+## 3. Fetching Unnecessary Columns
+
+Using:
+
+```sql
+SELECT *
+```
+
+fetches all columns even when some fields are not required.
+
+This increases memory usage and response size.
+
+---
+
+# Improved Query
+
+A better version of the query would be:
+
+```sql
+SELECT id, type, title, message, created_at
+FROM notifications
+WHERE student_id = 1042
+AND is_read = false
+ORDER BY created_at DESC
+LIMIT 20 OFFSET 0;
+```
+
+---
+
+# Improvements Made
+
+Changes in the optimized query:
+
+- Only required columns are selected
+- Pagination is added
+- Latest notifications are fetched first
+- Response size is smaller
+
+This helps reduce database load and improves API response time.
+
+---
+
+# Recommended Index
+
+To improve performance further, the following composite index can be added:
+
+```sql
+CREATE INDEX idx_notifications_student_read_created
+ON notifications(student_id, is_read, created_at DESC);
+```
+
+---
+
+# Why This Index Helps
+
+This index helps PostgreSQL quickly filter:
+
+- student notifications
+- unread notifications
+- sorted notifications
+
+Without the index, the database may scan the full table and then sort the data separately.
+
+With the index, PostgreSQL can directly locate matching rows in sorted order.
+
+---
+
+# Computation Cost
+
+## Without Index
+
+Approximate complexity:
+
+```text
+O(n log n)
+```
+
+because the database scans and sorts large amounts of data.
+
+---
+
+## With Composite Index
+
+Approximate complexity:
+
+```text
+O(log n)
+```
+
+since indexed lookups are much faster.
+
+---
+
+# Should Every Column Be Indexed?
+
+No.
+
+Adding indexes on every column is not recommended because:
+
+- indexes consume extra storage
+- insert and update operations become slower
+- maintaining too many indexes affects performance
+
+Indexes should only be added on columns frequently used in filtering, searching, or sorting.
+
+---
+
+# Useful Columns For Indexing
+
+The following columns are suitable for indexing:
+
+- student_id
+- is_read
+- created_at
+- type
+
+These fields are commonly used in notification queries.
+
+---
+
+# Query To Find Students Who Received Placement Notifications In Last 7 Days
+
+```sql
+SELECT DISTINCT student_id
+FROM notifications
+WHERE type = 'Placement'
+AND created_at >= NOW() - INTERVAL '7 days';
+```
+
+---
+
+# Why DISTINCT Is Used
+
+A student can receive multiple placement notifications.
+
+Using `DISTINCT` ensures that each student appears only once in the result.
+
+---
+
+# Additional Improvements
+
+Some additional optimizations that can improve performance are:
+
+- pagination
+- Redis caching
+- limiting API response size
+- queue-based processing for bulk notifications
+
+These techniques help maintain stable performance as the system grows.
