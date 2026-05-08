@@ -800,3 +800,77 @@ Queues add some extra backend complexity.
 # Final Approach
 
 A combination of pagination, caching, indexing, WebSockets, and queues can improve performance and reduce database load when the number of users grows.
+---
+
+# Stage-5
+
+# Bulk Notification Processing
+
+The current implementation sends emails and notifications one by one inside a loop.
+
+This approach can become slow when notifications need to be sent to thousands of students at the same time.
+
+Main issues with the current approach:
+
+- API response becomes slow
+- Failed email requests can stop the process
+- Database and email operations happen sequentially
+- High server load during bulk processing
+
+---
+
+# Better Approach
+
+A queue-based system should be used for bulk notifications.
+
+Instead of processing everything directly inside the request, notification jobs can be added to a queue and handled by background workers.
+
+This improves scalability and reliability.
+
+---
+
+# Why Queue Processing Helps
+
+Benefits:
+
+- Faster API response
+- Better error handling
+- Failed jobs can be retried
+- Reduced server load
+- Notifications can be processed in parallel
+
+---
+
+# Saving To Database And Sending Email
+
+Both operations should not depend completely on each other.
+
+The notification can first be stored in the database, and email sending can happen separately using background workers.
+
+This ensures that notifications are not lost even if email delivery fails temporarily.
+
+---
+
+# Revised Pseudocode
+
+```text
+function notify_all(student_ids, message)
+
+    for student_id in student_ids
+
+        add_job_to_queue({
+            student_id,
+            message
+        })
+
+worker_process(job)
+
+    save_notification_to_db(job)
+
+    send_email(job)
+
+    push_real_time_notification(job)
+```
+
+---
+
