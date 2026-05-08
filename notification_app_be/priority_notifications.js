@@ -1,4 +1,4 @@
-const axios = require("../notification_app_be/node_modules/axios");
+const axios = require("axios");
 
 const API_URL =
   "http://4.224.186.213/evaluation-service/notifications";

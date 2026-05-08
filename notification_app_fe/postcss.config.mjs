@@ -1,7 +1,6 @@
+// Minimal PostCSS config — no Tailwind plugins
 const config = {
-  plugins: {
-    "@tailwindcss/postcss": {},
-  },
+  plugins: {},
 };
 
 export default config;
